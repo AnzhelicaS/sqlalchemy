@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 style="text-align: center">Works log</h2>
+{% set text = 'Action #' %}
+<ul>
+    {% for name_dict, in_dict in json.items() %}
+    <div>
+    <h3>{{ text }} {{ loop.index }}</h3>
+    </div>
+    <table style="margin-bottom: 50px" class="table table-bordered">
+  <thead>
+    <tr class="table-secondary">
+      <th scope="col">Title of activity</th>
+      <th scope="col">Team leader</th>
+      <th scope="col">Duration</th>
+      <th scope="col">List of collaborators</th>
+      <th scope="col">Is finished</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th scope="row">{{ name_dict }}</th>
+      <td>{{ in_dict['leader'] }}</td>
+      <td>{{ in_dict['duration'] }}</td>
+      <td>{{ in_dict['collaborators'] }}</td>
+      <td class="table-warning">{% if in_dict['finished'] == True %} Is finished {% else %} Is not Finished {% endif %}</td>
+    </tr>
+  </tbody>
+</table>
+    {% endfor %}
+</ul>
+
+{% endblock %}
