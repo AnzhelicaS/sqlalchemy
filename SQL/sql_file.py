@@ -3,15 +3,35 @@ from SQL.data.jobs import Jobs
 from data import db_session
 from data.users import User
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, EmailField
 from wtforms.validators import DataRequired
+from flask_login import LoginManager, login_user, login_required, logout_user
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
 
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+
+class AddJob(FlaskForm):
+    job = StringField('Job Title', validators=[DataRequired()])
+    team_leader = StringField('Team Leader id', validators=[DataRequired()])
+    duration = StringField('Work Size', validators=[DataRequired()])
+    collaborators = StringField('Collaborators', validators=[DataRequired()])
+    is_finished = BooleanField('Is job finished?')
+    submit = SubmitField('Add')
+
+
+class LoginForm(FlaskForm):
+    email = EmailField('Почта', validators=[DataRequired()])
+    password = PasswordField('Пароль', validators=[DataRequired()])
+    remember_me = BooleanField('Запомнить меня')
+    submit = SubmitField('Войти')
+
 
 class RegisterForm(FlaskForm):
-    email = StringField('Login / email', validators=[DataRequired()])
+    email = EmailField('Login / email', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     second_password = PasswordField('Repeat password', validators=[DataRequired()])
     surname = StringField('Surname', validators=[DataRequired()])
@@ -24,16 +44,23 @@ class RegisterForm(FlaskForm):
     submit = SubmitField('Submit')
 
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
+@login_manager.user_loader
+def load_user(user_id):
+    db_session.global_init("db/mars.db")
+    db_sess = db_session.create_session()
+    return db_sess.query(User).get(user_id)
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
     form = RegisterForm()
     if form.validate_on_submit():
         if form.password.data != form.second_password.data:
-            return render_template('login.html', title='Register form', form=form,
+            return render_template('register.html', title='Register form', form=form,
                                    message='Ошибка. Пароли не совпадают')
 
         elif not form.age.data.isdigit():
-            return render_template('login.html', title='Register form', form=form,
+            return render_template('register.html', title='Register form', form=form,
                                    message='Ошибка. Неправельно указан возраст')
 
         db_session.global_init("db/mars.db")
@@ -53,12 +80,63 @@ def login():
         db_sess.add(user)
         db_sess.commit()
         return redirect('/success')
-    return render_template('login.html', title='Register form', form=form)
+    return render_template('register.html', title='Register form', form=form)
 
 
 @app.route('/success')
 def success():
     return render_template('success.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        db_session.global_init("db/mars.db")
+        db_sess = db_session.create_session()
+        user = db_sess.query(User).filter(User.email == form.email.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user, remember=form.remember_me.data)
+            return redirect("/")
+        return render_template('login.html',
+                               message="Неправильный логин или пароль",
+                               form=form)
+    return render_template('login.html', form=form)
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect("/")
+
+
+@app.route('/addjob', methods=['GET', 'POST'])
+@login_required
+def add_job():
+    form = AddJob()
+    if form.validate_on_submit():
+        db_session.global_init("db/mars.db")
+        db_sess = db_session.create_session()
+        if not (form.team_leader.data.isdigit() and db_sess.query(User).filter(
+                User.id == form.team_leader.data)).first():
+            return render_template('addjob.html',
+                                   message="Неправильный id тим лида",
+                                   form=form)
+        elif not form.duration.data.isdigit():
+            return render_template('addjob.html',
+                                   message="Неправильно указано Work size",
+                                   form=form)
+        job = Jobs()
+        job.team_leader = form.team_leader.data
+        job.job = form.job.data
+        job.work_size = form.duration.data
+        job.collaborators = form.collaborators.data
+        job.is_finished = form.is_finished.data
+        db_sess.add(job)
+        db_sess.commit()
+        return redirect("/")
+    return render_template('addjob.html', form=form)
 
 
 @app.route('/')
