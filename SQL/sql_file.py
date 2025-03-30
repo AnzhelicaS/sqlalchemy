@@ -1,11 +1,11 @@
-from flask import Flask, render_template, redirect
+from flask import Flask, render_template, redirect, request, abort
 from SQL.data.jobs import Jobs
 from data import db_session
 from data.users import User
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, EmailField
 from wtforms.validators import DataRequired
-from flask_login import LoginManager, login_user, login_required, logout_user
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
@@ -139,6 +139,52 @@ def add_job():
     return render_template('addjob.html', form=form)
 
 
+@app.route('/edit_job/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_job(id):
+    form = AddJob()
+    if request.method == "GET":
+        db_sess = db_session.create_session()
+        job = db_sess.query(Jobs).filter(Jobs.id == id).first()
+        if job:
+            form.job.data = job.job
+            form.team_leader.data = job.team_leader
+            form.duration.data = job.work_size
+            form.collaborators.data = job.collaborators
+            form.is_finished.data = job.is_finished
+        else:
+            abort(404)
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        job = db_sess.query(Jobs).filter(Jobs.id == id,
+                                         ((Jobs.team_leader == 1) | (Jobs.team_leader == current_user.id))).first()
+        if job:
+            job.job = form.job.data
+            job.team_leader = form.team_leader.data
+            job.work_size = form.duration.data
+            job.collaborators = form.collaborators.data
+            job.is_finished = form.is_finished.data
+            db_sess.commit()
+            return redirect('/')
+        else:
+            abort(404)
+    return render_template('addjob.html', title='Редактирование новости', form=form)
+
+
+@app.route('/job_delete/<int:id>', methods=['GET', 'POST'])
+@login_required
+def job_delete(id):
+    db_sess = db_session.create_session()
+    job = db_sess.query(Jobs).filter(Jobs.id == id,
+                                     ((Jobs.team_leader == 1) | (Jobs.team_leader == current_user.id))).first()
+    if job:
+        db_sess.delete(job)
+        db_sess.commit()
+    else:
+        abort(404)
+    return redirect('/')
+
+
 @app.route('/')
 def main():
     db_session.global_init("db/mars.db")
@@ -147,10 +193,10 @@ def main():
 
     for job in db_sess.query(Jobs):
         item = [job.job, job.team_leader, job.work_size, job.collaborators, job.is_finished]
-        jobs_json[item[0]] = {'name': item[0], 'leader': [f'{user.surname} {user.name}'
-                                                          for user in db_sess.query(User).filter(User.id == item[1])][
+        jobs_json[job] = {'name': item[0], 'leader': [f'{user.surname} {user.name}'
+                                                      for user in db_sess.query(User).filter(User.id == item[1])][
             0],
-                              'duration': item[2], 'collaborators': item[3], 'finished': item[4]}
+                          'duration': item[2], 'collaborators': item[3], 'finished': item[4]}
     return render_template('all_job.html', json=jobs_json)
 
 

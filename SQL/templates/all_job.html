@@ -5,11 +5,11 @@
 <h2 style="text-align: center">Works log</h2>
 {% set text = 'Action #' %}
 <ul>
-    {% for name_dict, in_dict in json.items() %}
+    {% for job, in_dict in json.items() %}
     <div>
     <h3>{{ text }} {{ loop.index }}</h3>
     </div>
-    <table style="margin-bottom: 50px" class="table table-bordered">
+    <table class="table table-bordered">
   <thead>
     <tr class="table-secondary">
       <th scope="col">Title of activity</th>
@@ -21,7 +21,7 @@
   </thead>
   <tbody>
     <tr>
-      <th scope="row">{{ name_dict }}</th>
+      <th scope="row">{{ in_dict['name'] }}</th>
       <td>{{ in_dict['leader'] }}</td>
       <td>{{ in_dict['duration'] }}</td>
       <td>{{ in_dict['collaborators'] }}</td>
@@ -29,6 +29,16 @@
     </tr>
   </tbody>
 </table>
+    {% if current_user.is_authenticated and ((current_user.id == job.team_leader) or (current_user.id == 1)) %}
+    <div>
+        <a href="/edit_job/{{ job.id }}" class="btn btn-warning" style="margin-bottom: 50px">
+            Изменить
+        </a>
+        <a href="/job_delete/{{ job.id }}" class="btn btn-danger" style="margin-bottom: 50px">
+            Удалить
+        </a>
+    </div>
+    {% endif %}
     {% endfor %}
 </ul>
 {% if current_user.is_authenticated %}
