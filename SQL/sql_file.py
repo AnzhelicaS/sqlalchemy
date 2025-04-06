@@ -1,17 +1,41 @@
-from flask import Flask, render_template, redirect, request, abort
+from flask import Flask, render_template, redirect, request, abort, jsonify
+import requests
+
+from SQL.api_v2.jobs_api_v2 import JobsListResource, JobsResource
 from SQL.data.jobs import Jobs
-from data import db_session
 from data.users import User
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, EmailField
 from wtforms.validators import DataRequired
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from data import db_session
+from SQL.api.jobs_api import jobs_blueprint
+from SQL.api.users_api import users_blueprint
+from flask import make_response
+from flask_restful import Api
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
 
+app.register_blueprint(jobs_blueprint, url_prefix='/api')
+app.register_blueprint(users_blueprint, url_prefix='/api')
+
+api_version2 = Api(app)
+api_version2.add_resource(JobsListResource, '/api/v2/jobs')
+api_version2.add_resource(JobsResource, '/api/v2/jobs/<int:jobs_id>')
+
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
+
+
+@app.errorhandler(400)
+def bad_request(_):
+    return make_response(jsonify({'error': 'Bad Request'}), 400)
 
 
 class AddJob(FlaskForm):
@@ -79,13 +103,8 @@ def register():
 
         db_sess.add(user)
         db_sess.commit()
-        return redirect('/success')
+        return redirect("/")
     return render_template('register.html', title='Register form', form=form)
-
-
-@app.route('/success')
-def success():
-    return render_template('success.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -186,18 +205,12 @@ def job_delete(id):
 
 
 @app.route('/')
-def main():
+def main_window():
     db_session.global_init("db/mars.db")
     db_sess = db_session.create_session()
-    jobs_json = {}
-
-    for job in db_sess.query(Jobs):
-        item = [job.job, job.team_leader, job.work_size, job.collaborators, job.is_finished]
-        jobs_json[job] = {'name': item[0], 'leader': [f'{user.surname} {user.name}'
-                                                      for user in db_sess.query(User).filter(User.id == item[1])][
-            0],
-                          'duration': item[2], 'collaborators': item[3], 'finished': item[4]}
-    return render_template('all_job.html', json=jobs_json)
+    jobs = requests.get('http://localhost:5000/api/jobs').json()
+    users = requests.get('http://localhost:5000/api/users').json()
+    return render_template('all_job.html', json=jobs, name=users)
 
 
 def global_init(db_name):
@@ -208,5 +221,10 @@ def create_session():
     return db_session.create_session()
 
 
-if __name__ == '__main__':
+def main():
+    db_session.global_init("db/mars.db")
     app.run(port=5000, host='127.0.0.1')
+
+
+if __name__ == '__main__':
+    main()

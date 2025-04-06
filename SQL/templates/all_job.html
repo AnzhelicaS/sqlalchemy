@@ -5,7 +5,7 @@
 <h2 style="text-align: center">Works log</h2>
 {% set text = 'Action #' %}
 <ul>
-    {% for job, in_dict in json.items() %}
+    {% for job in json['jobs'] %}
     <div>
     <h3>{{ text }} {{ loop.index }}</h3>
     </div>
@@ -21,11 +21,11 @@
   </thead>
   <tbody>
     <tr>
-      <th scope="row">{{ in_dict['name'] }}</th>
-      <td>{{ in_dict['leader'] }}</td>
-      <td>{{ in_dict['duration'] }}</td>
-      <td>{{ in_dict['collaborators'] }}</td>
-      <td class="table-warning">{% if in_dict['finished'] == True %} Is finished {% else %} Is not Finished {% endif %}</td>
+      <th scope="row">{{ job['job'] }}</th>
+      <td>{{ name['users'][job['team_leader'] - 1]['surname'] }} {{ name['users'][job['team_leader'] - 1]['name'] }}</td>
+      <td>{{ job['work_size'] }}</td>
+      <td>{{ job['collaborators'] }}</td>
+      <td class="table-warning">{% if job['finished'] == True %} Is finished {% else %} Is not Finished {% endif %}</td>
     </tr>
   </tbody>
 </table>

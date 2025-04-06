@@ -1,11 +1,14 @@
 import datetime
 import sqlalchemy
+from flask_login import UserMixin
+
 from .db_session import SqlAlchemyBase
 from sqlalchemy import orm
 from SQL.data.users import User
+from sqlalchemy_serializer import SerializerMixin
 
 
-class Jobs(SqlAlchemyBase):
+class Jobs(SqlAlchemyBase, SerializerMixin, UserMixin):
     __tablename__ = 'jobs'
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True)
